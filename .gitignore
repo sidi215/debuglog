@@ -1,0 +1,11 @@
+.env
+*.class
+target/
+*.jar
+*.log
+__pycache__/
+*.pyc
+.DS_Store
+.idea/
+*.iml
+ollama_data/
