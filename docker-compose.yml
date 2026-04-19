@@ -1,0 +1,55 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: debuglog-ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - debuglog-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ollama-init:
+    image: ollama/ollama:latest
+    container_name: debuglog-ollama-init
+    depends_on:
+      ollama:
+        condition: service_healthy
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - debuglog-net
+    entrypoint: >
+      sh -c "OLLAMA_HOST=http://ollama:11434 ollama pull ${OLLAMA_MODEL:-qwen2.5-coder:7b}"
+    restart: "no"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: debuglog-backend
+    depends_on:
+      ollama:
+        condition: service_healthy
+    env_file: .env
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+    networks:
+      - debuglog-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+networks:
+  debuglog-net:
+    driver: bridge
+
+volumes:
+  ollama_data:
