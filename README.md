@@ -3,6 +3,7 @@
   <img src="https://img.shields.io/badge/java-17-orange?style=flat-square" />
   <img src="https://img.shields.io/badge/spring%20boot-3.3-green?style=flat-square" />
   <img src="https://img.shields.io/badge/AI-local%20only-purple?style=flat-square" />
+  <img src="https://img.shields.io/badge/LLM-LLaMA-red?style=flat-square" />
   <img src="https://img.shields.io/badge/license-MIT-lightgrey?style=flat-square" />
 </p>
 
