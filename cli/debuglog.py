@@ -44,7 +44,7 @@ def analyze(log_content: str) -> dict:
 def prompt_confirmation(session_id: str) -> None:
     try:
         answer = console.input("\n[dim]Did this solve your issue? [y/N]:[/dim] ").strip().lower()
-        if answer == "y":
+        if answer in ("y", "yes"):
             requests.post(f"{CONFIRM_ENDPOINT}/{session_id}", timeout=10)
             console.print("[green]Solution saved to knowledge base.[/green]")
     except (KeyboardInterrupt, EOFError):

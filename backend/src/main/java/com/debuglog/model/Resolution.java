@@ -11,7 +11,8 @@ public class Resolution {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(columnDefinition = "INTEGER")
+    private Integer id;
 
     @Column(nullable = false)
     private String errorHash;

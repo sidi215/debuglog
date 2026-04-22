@@ -1,6 +1,8 @@
 services:
   ollama:
-    image: ollama/ollama:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.ollama
     container_name: debuglog-ollama
     volumes:
       - ollama_data:/root/.ollama

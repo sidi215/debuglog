@@ -1,9 +1,9 @@
 package com.debuglog.model;
 
 import lombok.Builder;
-import lombok.Value;
+import lombok.Data;
 
-@Value
+@Data
 @Builder
 public class ParsedLog {
     String format;

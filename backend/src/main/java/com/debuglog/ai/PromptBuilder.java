@@ -1,55 +1,27 @@
-package com.debuglog.service;
+package com.debuglog.ai;
 
-import com.debuglog.ai.PromptBuilder;
-import com.debuglog.model.*;
-import lombok.RequiredArgsConstructor;
-import org.springframework.ai.ollama.OllamaChatClient;
-import org.springframework.ai.prompt.PromptTemplate;
-import org.springframework.stereotype.Service;
-import java.util.Optional;
-import java.util.UUID;
+import com.debuglog.model.ParsedLog;
+import com.debuglog.model.Resolution;
+import org.springframework.stereotype.Component;
 
-@Service
-@RequiredArgsConstructor
-public class AnalysisService {
+@Component
+public class PromptBuilder {
 
-    private final SanitizationService sanitizationService;
-    private final LogParserService logParserService;
-    private final KnowledgeBaseService knowledgeBaseService;
-    private final PromptBuilder promptBuilder;
-    private final OllamaChatClient ollamaChatClient;
+    public String build(ParsedLog log, Resolution kbMatch) {
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("You are an expert DevSecOps engineer.\n");
+        prompt.append("Respond ONLY with raw JSON. No markdown, no backticks, no explanation.\n");
+        prompt.append("Exact format: {\"rootCause\": \"...\", \"solution\": \"...\", \"severity\": \"LOW|MEDIUM|HIGH|CRITICAL\"}\n\n");
+        prompt.append("Format: ").append(log.getFormat()).append("\n");
+        prompt.append("Error type: ").append(log.getErrorType()).append("\n");
+        prompt.append("Stack trace:\n").append(log.getStackTrace()).append("\n");
 
-    public AnalysisResponse analyze(AnalysisRequest request) {
-        String sanitized = sanitizationService.sanitize(request.getLogContent());
-        ParsedLog parsed = logParserService.parse(sanitized);
+        if (kbMatch != null) {
+            prompt.append("\nPreviously confirmed fix for similar error:\n");
+            prompt.append(kbMatch.getSolution()).append("\n");
+            prompt.append("Validate or improve this solution.\n");
+        }
 
-        Optional<Resolution> kbMatch = knowledgeBaseService.findByHash(parsed.getErrorHash());
-
-        String prompt = promptBuilder.build(parsed, kbMatch.orElse(null));
-        String aiResponse = ollamaChatClient.call(prompt);
-
-        Resolution saved = knowledgeBaseService.save(
-                parsed.getErrorHash(),
-                parsed.getErrorType(),
-                parsed.getStackTrace(),
-                aiResponse,
-                false
-        );
-
-        return AnalysisResponse.builder()
-                .format(parsed.getFormat())
-                .errorType(parsed.getErrorType())
-                .rootCause(parsed.getMessage())
-                .solution(aiResponse)
-                .severity(detectSeverity(parsed.getErrorType()))
-                .fromKnowledgeBase(kbMatch.isPresent())
-                .sessionId(saved.getId() + "-" + UUID.randomUUID().toString().substring(0, 8))
-                .build();
-    }
-
-    private String detectSeverity(String errorType) {
-        if (errorType.contains("OutOfMemory") || errorType.contains("StackOverflow")) return "CRITICAL";
-        if (errorType.contains("NullPointer") || errorType.contains("IllegalState")) return "HIGH";
-        return "MEDIUM";
+        return prompt.toString();
     }
 }

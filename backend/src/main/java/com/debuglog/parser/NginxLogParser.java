@@ -14,7 +14,8 @@ public class NginxLogParser implements LogParserStrategy {
 
     @Override
     public boolean supports(String logContent) {
-        return logContent.contains("[error]") && logContent.contains("nginx");
+        return (logContent.contains("[error]") || logContent.contains("[warn]") || logContent.contains("[crit]"))
+            && (logContent.contains("nginx") || logContent.contains("upstream") || logContent.contains("connect() failed"));
     }
 
     @Override

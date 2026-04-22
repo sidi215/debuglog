@@ -2,10 +2,12 @@ package com.debuglog.service;
 
 import com.debuglog.ai.PromptBuilder;
 import com.debuglog.model.*;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
-import org.springframework.ai.ollama.OllamaChatClient;
-import org.springframework.ai.prompt.PromptTemplate;
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
+
 import java.util.Optional;
 import java.util.UUID;
 
@@ -17,7 +19,8 @@ public class AnalysisService {
     private final LogParserService logParserService;
     private final KnowledgeBaseService knowledgeBaseService;
     private final PromptBuilder promptBuilder;
-    private final OllamaChatClient ollamaChatClient;
+    private final ChatClient chatClient;
+    private final ObjectMapper objectMapper;
 
     public AnalysisResponse analyze(AnalysisRequest request) {
         String sanitized = sanitizationService.sanitize(request.getLogContent());
@@ -26,25 +29,42 @@ public class AnalysisService {
         Optional<Resolution> kbMatch = knowledgeBaseService.findByHash(parsed.getErrorHash());
 
         String prompt = promptBuilder.build(parsed, kbMatch.orElse(null));
-        String aiResponse = ollamaChatClient.call(prompt);
+        String raw = chatClient.prompt()
+                .user(prompt)
+                .call()
+                .content()
+                .replaceAll("(?s)```json\\s*", "")
+                .replaceAll("```", "")
+                .trim();
+
+        String rootCause = parsed.getMessage();
+        String solution = raw;
+        String severity = detectSeverity(parsed.getErrorType());
+
+        try {
+            JsonNode node = objectMapper.readTree(raw);
+            if (node.has("rootCause")) rootCause = node.get("rootCause").asText();
+            if (node.has("solution"))  solution  = node.get("solution").asText();
+            if (node.has("severity"))  severity  = node.get("severity").asText();
+        } catch (Exception ignored) {}
 
         Resolution saved = knowledgeBaseService.save(
-                parsed.getErrorHash(),
-                parsed.getErrorType(),
-                parsed.getStackTrace(),
-                aiResponse,
-                false
+            parsed.getErrorHash(),
+            parsed.getErrorType(),
+            parsed.getStackTrace(),
+            solution,
+            false
         );
 
         return AnalysisResponse.builder()
-                .format(parsed.getFormat())
-                .errorType(parsed.getErrorType())
-                .rootCause(parsed.getMessage())
-                .solution(aiResponse)
-                .severity(detectSeverity(parsed.getErrorType()))
-                .fromKnowledgeBase(kbMatch.isPresent())
-                .sessionId(saved.getId() + "-" + UUID.randomUUID().toString().substring(0, 8))
-                .build();
+            .format(parsed.getFormat())
+            .errorType(parsed.getErrorType())
+            .rootCause(rootCause)
+            .solution(solution)
+            .severity(severity)
+            .fromKnowledgeBase(kbMatch.isPresent())
+            .sessionId(saved.getId() + "-" + UUID.randomUUID().toString().substring(0, 8))
+            .build();
     }
 
     private String detectSeverity(String errorType) {

@@ -25,7 +25,7 @@ public class AnalysisController {
 
     @PostMapping("/confirm/{sessionId}")
     public ResponseEntity<Map<String, String>> confirm(@PathVariable String sessionId) {
-        Long id = Long.parseLong(sessionId.split("-")[0]);
+        Integer id = Integer.parseInt(sessionId.split("-")[0]);
         knowledgeBaseService.confirm(id);
         return ResponseEntity.ok(Map.of("status", "confirmed"));
     }
