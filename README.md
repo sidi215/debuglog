@@ -186,7 +186,7 @@ debuglog/
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/yourname/debuglog
+git clone https://github.com/sidi215/debuglog
 cd debuglog
 
 # 2. Configure environment
